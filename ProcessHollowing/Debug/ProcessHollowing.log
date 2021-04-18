@@ -1,0 +1,3 @@
+﻿  ProcessHollowing.cpp
+ProcessHollowing.obj : error LNK2019: unresolved external symbol _NtQueryInformationProcess@20 referenced in function _main
+C:\Users\Who\Desktop\Projects\ProcessHollowing\Debug\ProcessHollowing.exe : fatal error LNK1120: 1 unresolved externals
