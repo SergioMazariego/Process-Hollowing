@@ -3,13 +3,23 @@
 #include <winternl.h>
 #include <libloaderapi.h>
 
+typedef NTSTATUS(__stdcall* _NtQueryInformationProcess)(_In_ HANDLE, _In_ unsigned int, _Out_ PVOID, _In_ ULONG, _Out_ PULONG);
+
 int main()
 {
+
+    HMODULE hNtDll = LoadLibraryW(L"ntdll.dll");
+
+    _NtQueryInformationProcess NtQueryInformationProcess = NULL;
+
+    NtQueryInformationProcess = (_NtQueryInformationProcess)GetProcAddress(hNtDll, "NtQueryInformationProcess");
+    
     LPSTARTUPINFOA  pStartupInfo = new STARTUPINFOA();
     LPPROCESS_INFORMATION  pProcessInfo = new PROCESS_INFORMATION();
+    LPCSTR processPath = "C:\\Users\\Who\\Desktop\\Books\\Malware\\E-zines\\Gedzac\\Gedzac.Mitosis.Ezine.3\\Gedzac.Mitosis.Ezine.3\\Mitosis3.exe";
     
     BOOL bCreateProcess = CreateProcessA(
-                            "C:\\Users\\Who\\Desktop\\Books\\Malware\\E-zines\\Gedzac\\Gedzac.Mitosis.Ezine.3\\Gedzac.Mitosis.Ezine.3\\Mitosis3.exe",
+                            processPath,
                             0,
                             0,
                             0,
@@ -17,8 +27,8 @@ int main()
                             CREATE_SUSPENDED,
                             0,
                             0,
-                            pStartupInfo, //A pointer to a STARTUPINFO or STARTUPINFOEX structure.
-                            pProcessInfo //A pointer to a PROCESS_INFORMATION structure that receives identification information about the new process.
+                            pStartupInfo, 
+                            pProcessInfo
                         );
 
     if (bCreateProcess) 
@@ -30,12 +40,14 @@ int main()
         printf("Error creating process");
     }
 
-    PROCESS_BASIC_INFORMATION processInfo;
-    NTSTATUS dwStatus = NtQueryInformationProcess(pProcessInfo->hProcess, ProcessBasicInformation, &processInfo, sizeof(processInfo), 0);
+    LPVOID lpMem;
+    char buf;
+    DWORD totalRead;
 
-    if (dwStatus >= 0)
-    {
-        printf("NtQueryInformationProcess succeded");
-    }
+    PROCESS_BASIC_INFORMATION processInfo;
+    HANDLE hVictimProcess = pProcessInfo->hProcess;
+    NTSTATUS dwStatus = NtQueryInformationProcess(hVictimProcess, ProcessBasicInformation, &processInfo, sizeof(processInfo), 0);
+
+    ReadProcessMemory(hVictimProcess, lpMem, (LPVOID)(&buf), 1, &totalRead);
 }
 
